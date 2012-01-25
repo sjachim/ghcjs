@@ -59,10 +59,16 @@ var $hs = {
         el.innerHTML = el.innerHTML + c + ": " + str + '<br/>\n';
     },
     logInfo: function (str) {
-        $hs.logAny("INFO", str);
+        if (console)
+          console.info(str);
+        else
+          $hs.logAny("INFO", str);
     },
     logError: function (str) {
-        $hs.logAny("ERROR", str);
+        if (console)
+          console.error(str);
+        else
+          $hs.logAny("ERROR", str);
     },
     logDebug: function (str) {
         $hs.logAny("DEBUG", str);
@@ -82,6 +88,20 @@ $hs.Module.prototype = {
 };
 $hs.loadPaths = ["./"];
 $hs.packages = [".", "ghc-prim", "integer-simple", "base"];
+$hs.loadCode = function (path) {
+      $hs.logInfo("1loading code from:" + path);
+  if (typeof XMLHttpRequest !== 'undefined') {
+    var transport = new XMLHttpRequest();
+    transport.open("GET", path, false);
+    transport.send(null);
+    if (transport.status == 200 || transport.status == 0)
+      return transport.responseText;
+  } else if (typeof require !== 'undefined') {
+      var fs = require('fs');
+      $hs.logInfo("4loading code from:" + path);
+      return fs.readFileSync(path, 'utf8');
+  } 
+}
 $hs.loadModule = function (moduleName) {
 	    variableName = moduleName.replace(/z/g, "zz").replace(/\./g, "zi"); // Z-encoding string
 	    modulePath = moduleName.replace(/\./g, "/") + ".js";
@@ -94,12 +114,10 @@ $hs.loadModule = function (moduleName) {
 	        for (var j = 0; j < $hs.packages.length && code == null; j++) {
 		    var path = $hs.loadPaths[i] + $hs.packages[j] + "/" + modulePath;
 		    try {
-		        var transport = new XMLHttpRequest();
-		        transport.open("GET", path, false);
-		        transport.send(null);
-		        if (transport.status == 200 || transport.status == 0)
-                            code = transport.responseText;
-		    } catch (e) { }
+		        code = $hs.loadCode(path);
+		    } catch (e) { 
+                      $hs.logInfo(e);
+                    }
 	        }
             }
 	    try {
